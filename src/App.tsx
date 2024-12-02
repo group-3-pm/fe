@@ -38,7 +38,7 @@ export default function App() {
 	};
 	
 	useEffect(() => {
-		const ws = new WebSocket('ws://localhost:8080');
+		const ws = new WebSocket('ws://localhost:8081/e/queue');
 		websocketRef.current = ws;
 		
 		ws.onopen = () => {
