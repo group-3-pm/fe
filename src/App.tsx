@@ -27,7 +27,7 @@ export default function App() {
 			const formData = new FormData();
 			formData.append('file', selectedFile);
 			try {
-				const response = await fetch('http://localhost:8081/e/pdf', {
+				const response = await fetch('http://densach.edu.vn/api/e/pdf', {
 					method: 'POST',
 					body: formData,
 				});
@@ -89,7 +89,7 @@ export default function App() {
 	
 	const handleGetGeminiRequestByDocumentId = async () => {
 		try {
-			const response = await fetch(`http://localhost:8081/e/gemini/image/${documentId}`);
+			const response = await fetch(`http://densach.edu.vn/api/e/gemini/image/${documentId}`);
 			
 			const result = await response.json();
 			console.log(result)
