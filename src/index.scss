@@ -101,10 +101,12 @@
           font-size: 0.875rem;
           font-weight: 500;
 
-          &.disabled {
-            background-color: #9ca3af;
-            cursor: not-allowed;
-          }
+
+        }
+
+        .summarize-button:disabled {
+          background-color: #9ca3af;
+          cursor: not-allowed;
         }
 
         .convert-button:hover {
@@ -120,6 +122,13 @@
         .summarize-button:active {
           background-color: #92b8e8;
         }
+
+        .convert-button:disabled {
+          background-color: #9ca3af;
+          cursor: not-allowed;
+        }
+
+
 
       }
 

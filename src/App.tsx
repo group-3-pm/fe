@@ -224,8 +224,9 @@ export default function App () {
 										<label htmlFor="result">Conversion Result</label>
 										<div className="markdown-output">
 											<Markdown remarkPlugins={[remarkGfm]} urlTransform={( value ) => value} className="foo">
-												{processText (conversionResult[resultPage])}
+												{/*{processText (conversionResult[resultPage])}*/}
 												{/*{processText(inputText)}*/}
+												{conversionResult[resultPage]}
 											</Markdown>
 										</div>
 										<div className="pagination">
