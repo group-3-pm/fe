@@ -1,256 +1,281 @@
 import React, { useState, ChangeEvent, useEffect, useRef } from 'react';
 import Markdown from "react-markdown";
-import "./index.css"
+import "./index.scss"
 import { Simulate } from "react-dom/test-utils";
-import progress = Simulate.progress;
+import { CircularProgress } from "@mui/material";
+import { inputText, markdown, processTable, processText } from "./utils/processTableText.ts";
+import remarkGfm from "remark-gfm";
 
-export default function App() {
-	const [selectedFile, setSelectedFile] = useState<File | null>(null);
-	const [conversionFormat, setConversionFormat] = useState('json');
-	const [conversionResult, setConversionResult] = useState([]);
-	const websocketRef = useRef<WebSocket | null>(null);
+export default function App () {
+	const [selectedFile, setSelectedFile] = useState<File | null> (null);
+	const [conversionFormat, setConversionFormat] = useState ('json');
+	const [conversionResult, setConversionResult] = useState ([]);
+	const websocketRef = useRef<WebSocket | null> (null);
 	const [resultPage, setResultPage] = useState (0);
-	const [documentId, setDocumentId] = useState (0)
+	const [documentId, setDocumentId] = useState (0);
+	const [loadingState, setLoadingState] = useState<"idle" | "converting" | "summarizing"> ("idle");
+	const [summarizeResult, setSummarizeResult] = useState ('')
 	
-	const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+	const handleFileSelect = ( event: ChangeEvent<HTMLInputElement> ) => {
 		if (event.target.files && event.target.files[0]) {
-			setSelectedFile(event.target.files[0]);
+			setSelectedFile (event.target.files[0]);
 		}
 	};
 	
-	const handleFormatChange = (event: ChangeEvent<HTMLInputElement>) => {
-		setConversionFormat(event.target.value);
+	const handleFormatChange = ( event: ChangeEvent<HTMLInputElement> ) => {
+		setConversionFormat (event.target.value);
 	};
 	
-	const handleConvert = async() => {
+	function convertImgToMarkdown ( xmlString ) {
+		// Sử dụng RegExp để tìm tất cả các thẻ <img> với thuộc tính src
+		const imgTagRegex = /<img src="(data:image\/\w+;base64,[^"]+)"[^>]*>/g;
+		
+		// Thay thế tất cả các thẻ <img> bằng cú pháp markdown
+		return xmlString.replaceAll (imgTagRegex, ( match, src ) => {
+			// Tạo cú pháp markdown cho hình ảnh
+			return `![image](${src})`;
+		});
+	}
+	
+	const handleProcess = () => {
+		handleConvert ().then (( resolve: number ) => setTimeout (() => {
+			console.log (resolve)
+			handleGetGeminiRequestByDocumentId (resolve)
+		}, 0))
+	}
+	
+	const handleConvert = async () => {
+		setSummarizeResult ('');
+		setConversionResult ([]);
+		
 		if (selectedFile) {
-			const formData = new FormData();
-			formData.append('file', selectedFile);
+			setLoadingState ("converting");
+			console.log (selectedFile)
+			const formData = new FormData ();
+			formData.append ('file', selectedFile);
 			try {
-				const response = await fetch('http://densach.edu.vn/api/e/pdf', {
+				const response = await fetch ('http://densach.edu.vn/api/e/pdf', {
 					method: 'POST',
 					body: formData,
 				});
-
+				
 				if (!response.ok) {
-					throw new Error('Failed to upload file');
+					throw new Error ('Failed to upload file');
 				}
-
-				const result = await response.json();
-				setDocumentId(result.id || 0);
+				
+				const result = await response.json ();
+				setDocumentId (result.id || 0);
 				const resultArray = [];
-				result?.data?.forEach(page => {
+				result?.data?.forEach (page => {
 					const imageList = page?.page?.images;
 					const tables = page?.page?.tables; // Danh sách bảng
 					let convertedText = page?.page?.text;
-					console.log(tables)
+					console.log (tables)
 					
-					// Xử lý bảng
-					tables?.forEach((table, tableIndex) => {
-						console.log(table)
-						const tableRows = table?.content?.split("\n"); // Tách từng hàng trong bảng
-						const markdownTable = [];
-
-						tableRows.forEach((row, rowIndex) => {
-							const columns = row.split(","); // Tách các cột trong hàng
-							const markdownRow = columns.map((col) => col.trim()).join(" | "); // Ghép cột với ký tự `|`
-							markdownTable.push(`| ${markdownRow} |`); // Thêm dấu `|` vào đầu và cuối
-							if (rowIndex === 0) {
-								// Thêm hàng phân cách (chỉ cần sau tiêu đề)
-								markdownTable.push(
-									`| ${columns.map(() => "--------------------").join(" | ")} |`
-								);
-							}
-						});
-
-						// Ghép bảng Markdown
-						const tableMarkdown = markdownTable.join("\n");
-
-						// Tìm và thay thế nội dung trong text với bảng Markdown
-						convertedText = convertedText.replace(
-							`{table${tableIndex}}`, // Ví dụ: Sử dụng {table0} để đánh dấu vị trí bảng trong text
-							tableMarkdown
-						);
-					});
-					
-					imageList?.forEach(image => {
+					imageList?.forEach (image => {
 						const imageSrc = image?.content;
 						const imageName = image?.name;
-						convertedText = page.page.text.replace(`(${imageName})`, `(data:image/png;base64,${imageSrc})`);
+						
+						if (selectedFile?.type?.includes ('pdf')) {
+							convertedText = page.page.text.replace (`(${imageName})`, `(data:image/png;base64,${imageSrc})`);
+						}
+						if (selectedFile?.type?.includes ('doc')) {
+							console.log (page.page.text.includes (`media/${imageName}`), ' ', `media/(${imageName})`)
+							convertedText = convertedText.replace (`media/${imageName}`, `data:image/png;base64,${imageSrc}`);
+						}
 					});
-					resultArray.push(convertedText);
-					setConversionResult(resultArray);
+					resultArray.push (convertImgToMarkdown (convertedText));
+					setConversionResult (resultArray);
 				});
+				
+				return result.id || 0;
+				// handleGetGeminiRequestByDocumentId();
 			} catch (error) {
-				console.error('Error uploading file:', error);
+				console.error ('Error uploading file:', error);
+				setLoadingState ("idle");
 			}
 		}
 	};
 	
-	const handleGetGeminiRequestByDocumentId = async () => {
+	const processValidArray = ( array: any[] ) => {
+		return array.map (element => {
+			if(element !== {}) return element;
+		});
+	}
+	
+	const handleGetGeminiRequestByDocumentId = async ( documentId: number ) => {
+		setLoadingState ("summarizing");
+		// if (!documentId) return;
+		
 		try {
-			const response = await fetch(`http://densach.edu.vn/api/e/gemini/image/${documentId}`);
+			const imageResponse = await fetch (`http://densach.edu.vn/api/e/gemini/image/${documentId}`);
+			const tableResponse = await fetch (`http://densach.edu.vn/api/e/gemini/${documentId}`);
 			
-			const result = await response.json();
-			console.log(result)
+			const imageResult = await imageResponse.json ();
+			const tableResult = await tableResponse.json ();
+			
+			const imagePrompt = imageResult.contents?.[0]?.parts;
+			const tablePrompt = tableResult.contents?.[0]?.parts;
+			const prompt = [...(imagePrompt.length > 1 ? processValidArray (imagePrompt) : []), ...(tablePrompt.length > 1 ? processValidArray (tablePrompt) : [])];
+			console.log ({ imagePrompt, tablePrompt, prompt });
+			
+			const requestBody = {
+				contents: [
+					{
+						parts: prompt
+					}
+				]
+			}
+			
+			console.log ('check: ', requestBody);
 			
 			try {
-				const summarizeResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyCCvI2GTCP8nQRnWMLdkrsyBAaBcu9uH9U`, {
-					method: 'POST',
-					body: JSON.stringify(result)
-				}) ;
+				if (!prompt.length) return;
 				
-				const summarizeResult = await summarizeResponse.json();
-				console.log(summarizeResult)
+				const summarizeResponse = await fetch (`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyCCvI2GTCP8nQRnWMLdkrsyBAaBcu9uH9U`, {
+					method: 'POST',
+					body: JSON.stringify (requestBody)
+				});
+				
+				const summarizeResult = await summarizeResponse.json ();
+				setSummarizeResult (summarizeResult?.candidates?.[0]?.content?.parts?.[0]?.text || '')
+				console.log (summarizeResult?.candidates?.[0]?.content?.parts?.[0]?.text)
 			} catch (e) {
-				console.error('Summarize failed: ', e)
+				console.error ('Summarize failed: ', e);
+				setLoadingState ("idle");
 			}
 		} catch (e) {
-			console.log('Get gemini request body failed');
+			console.log ('Get gemini request body failed', e);
+			setLoadingState ("idle");
+		} finally {
+			setLoadingState ("idle");
 		}
 	}
 	
-	const containerStyle: React.CSSProperties = {
-		display: 'flex',
-		alignItems: 'center',
-		justifyContent: 'center',
-		minHeight: '100vh',
-		backgroundColor: '#f3f4f6',
-		width: 'fit-content'
-	};
-	
-	const cardStyle: React.CSSProperties = {
-		width: '100%',
-		// maxWidth: '32rem',
-		backgroundColor: 'white',
-		borderRadius: '0.5rem',
-		boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-	};
-	
-	const cardContentStyle: React.CSSProperties = {
-		padding: '1.5rem',
-		display: 'flex',
-		flexDirection: 'column',
-		gap: '1.5rem',
-		width: '1000px'
-	};
-	
-	const buttonStyle: React.CSSProperties = {
-		backgroundColor: '#3b82f6',
-		color: 'white',
-		padding: '0.5rem 1rem',
-		borderRadius: '0.25rem',
-		border: 'none',
-		cursor: 'pointer',
-		display: 'inline-flex',
-		alignItems: 'center',
-		justifyContent: 'center',
-		width: 'fit-content',
-		fontSize: '0.875rem',
-		fontWeight: 'medium',
-	};
-	
-	const disabledButtonStyle: React.CSSProperties = {
-		...buttonStyle,
-		backgroundColor: '#9ca3af',
-		cursor: 'not-allowed',
-	};
-	
-	const textareaStyle: React.CSSProperties = {
-		width: '100%',
-		height: '200px',
-		padding: '0.5rem',
-		borderRadius: '0.25rem',
-		border: '1px solid #d1d5db',
-		marginTop: '0.5rem',
-	};
-	
 	return (
-		<div style={containerStyle}>
-			<div style={cardStyle}>
-				<div style={cardContentStyle}>
-					<div>
+		<div className="container">
+			<div className="card">
+				<div className="card-content">
+					{/* File Upload Section */}
+					<div className="file-upload">
 						<label htmlFor="file">Upload File</label>
-						<div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+						<div className="file-input-wrapper">
 							<input
 								id="file"
 								type="file"
 								accept=".pdf,.doc,.docx"
 								onChange={handleFileSelect}
-								style={{ display: 'none' }}
+								style={{ display: "none" }}
 							/>
 							<button
-								onClick={() => document.getElementById('file')?.click()}
-								style={buttonStyle}
+								className={`file-button`}
+								onClick={() => document.getElementById ("file")?.click ()}
+								// disabled={!selectedFile}
 							>
 								Choose File
 							</button>
-							<span>{selectedFile ? selectedFile.name : 'No file chosen'}</span>
+							<span className="file-name">
+                {selectedFile ? selectedFile.name : "No file chosen"}
+              </span>
 						</div>
+						<div className={'note'}>*Only choose docx or pdf file</div>
 					</div>
-					{/*<div>*/}
-					{/*	<p>Conversion Format</p>*/}
-					{/*	<div style={{ display: 'flex', gap: '1rem' }}>*/}
-					{/*		<label>*/}
-					{/*			<input*/}
-					{/*				type="radio"*/}
-					{/*				value="json"*/}
-					{/*				checked={conversionFormat === 'json'}*/}
-					{/*				onChange={handleFormatChange}*/}
-					{/*			/>*/}
-					{/*			JSON*/}
-					{/*		</label>*/}
-					{/*		<label>*/}
-					{/*			<input*/}
-					{/*				type="radio"*/}
-					{/*				value="markdown"*/}
-					{/*				checked={conversionFormat === 'markdown'}*/}
-					{/*				onChange={handleFormatChange}*/}
-					{/*			/>*/}
-					{/*			Markdown*/}
-					{/*		</label>*/}
-					{/*		</label>*/}
+					
+					{/* Action Buttons */}
+					<div className="action-buttons">
+						<button
+							className={`convert-button ${(!selectedFile || loadingState !== 'idle') ? "disabled" : ""}`}
+							onClick={handleProcess}
+							disabled={!selectedFile || loadingState !== 'idle'}
+						>
+							{loadingState === "idle" && (
+								<div className="loading-state">Convert</div>
+							)}
+							
+							{loadingState === "converting" && (
+								<div className="loading-state">Converting...</div>
+							)}
+							
+							{loadingState === "summarizing" && (
+								<div className="loading-state">Summarizing...</div>
+							)}
+						</button>
+					</div>
+					{/*{conversionResult.length > 0 && (*/}
+					{/*	<div className="action-buttons">*/}
+					{/*		<button*/}
+					{/*			className={`summarize-button ${!selectedFile ? "disabled" : ""}`}*/}
+					{/*			onClick={handleGetGeminiRequestByDocumentId}*/}
+					{/*		>*/}
+					{/*			Summarize*/}
+					{/*		</button>*/}
 					{/*	</div>*/}
-					{/*</div>*/}
-					<div style={{display: "flex", justifyContent: "center", alignItems: "center"}}>
-						<button
-							onClick={handleConvert}
-							disabled={!selectedFile}
-							style={selectedFile ? buttonStyle : disabledButtonStyle}
-						>
-							Convert
-						</button>
-					</div>
+					{/*)}*/}
 					
-					<div style={{display: "flex", justifyContent: "center", alignItems: "center"}}>
-						<button
-							onClick={handleGetGeminiRequestByDocumentId}
-							disabled={!selectedFile}
-							style={selectedFile ? buttonStyle : disabledButtonStyle}
-						>
-							Summarize
-						</button>
-					</div>
-					
-					{conversionResult.length > 0 && (
-						<>
-							<div>
-								<label htmlFor="result">Conversion Result</label>
-								<Markdown urlTransform={(value: string) => value}>{conversionResult[resultPage]}</Markdown>
-							</div>
-							<div style={{display: "flex", justifyContent: "center", alignItems: "center"}}>
-								{conversionResult?.map((result, index) => (
-									<div key={index} className={'page-number'} style={{cursor: "pointer", width: "25px", height: "25px", display: "flex", justifyContent: "center", alignItems: "center", backgroundColor: index === resultPage ? 'gray' : '', margin: '5px', borderRadius: "4px"}} onClick={() => {
-										setResultPage(index)
-									}}>{index + 1}</div>
-								))}
-							</div>
-						</>
+					<div className={'result'}>
+						{loadingState === 'converting' && (
+							<CircularProgress/>
+						)}
 						
-					)}
+						{loadingState !== 'converting' && (
+							<>
+								{conversionResult.length > 0 && (
+									<div className="conversion-result" style={{ 'flex': 1 }}>
+										<label htmlFor="result">Conversion Result</label>
+										<div className="markdown-output">
+											<Markdown remarkPlugins={[remarkGfm]} urlTransform={( value ) => value} className="foo">
+												{processText (conversionResult[resultPage])}
+												{/*{processText(inputText)}*/}
+											</Markdown>
+										</div>
+										<div className="pagination">
+											{conversionResult.map (( _, index ) => (
+												<>
+													{index !== conversionResult.length - 1 && (
+														<div
+															key={index}
+															className={`page-number ${
+																index === resultPage ? "active" : ""
+															}`}
+															onClick={() => setResultPage (index)}
+														>
+															{index + 1}
+														</div>
+													)}
+												</>
+											
+											))}
+										</div>
+									</div>
+								)}
+								
+								{summarizeResult && (
+									<div className="conversion-result" style={{
+										maxWidth: '900px'
+									}}>
+										<label htmlFor="result">Summarization Result</label>
+										<div className="markdown-output">
+											<Markdown urlTransform={( value ) => value}>
+												{summarizeResult}
+											</Markdown>
+										</div>
+									</div>
+								)}
+							</>
+						)}
 					
+					</div>
+					
+					
+					{/*<Markdown remarkPlugins={[remarkGfm]} urlTransform={(value) => value} className="foo">*/}
+					{/*	{markdown}*/}
+					{/*	*/}
+					{/*	*/}
+					{/*</Markdown>*/}
+				
 				</div>
 			</div>
 		</div>
+	
 	);
 }
