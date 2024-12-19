@@ -254,7 +254,7 @@ export default function App () {
 									<div className="conversion-result" style={{
 										maxWidth: '900px'
 									}}>
-										<label htmlFor="result">Summarization Result</label>
+										<label htmlFor="result">Tables & Images Summarization </label>
 										<div className="markdown-output">
 											<Markdown urlTransform={( value ) => value}>
 												{summarizeResult}
