@@ -153,130 +153,135 @@ export default function App () {
 	}
 	
 	return (
-		<div className="container">
-			<div className="card">
-				<div className="card-content">
-					{/* File Upload Section */}
-					<div className="file-upload">
-						<label htmlFor="file">Upload File</label>
-						<div className="file-input-wrapper">
-							<input
-								id="file"
-								type="file"
-								accept=".pdf,.doc,.docx"
-								onChange={handleFileSelect}
-								style={{ display: "none" }}
-							/>
-							<button
-								className={`file-button`}
-								onClick={() => document.getElementById ("file")?.click ()}
-								// disabled={!selectedFile}
-							>
-								Choose File
-							</button>
-							<span className="file-name">
+		<>
+			<div className={'heading'}>Document Extractor</div>
+			<div className="container">
+				
+				<div className="card">
+					<div className="card-content">
+						{/* File Upload Section */}
+						<div className="file-upload">
+							<label htmlFor="file">Upload File</label>
+							<div className="file-input-wrapper">
+								<input
+									id="file"
+									type="file"
+									accept=".pdf,.doc,.docx"
+									onChange={handleFileSelect}
+									style={{ display: "none" }}
+								/>
+								<button
+									className={`file-button`}
+									onClick={() => document.getElementById ("file")?.click ()}
+									// disabled={!selectedFile}
+								>
+									Choose File
+								</button>
+								<span className="file-name">
                 {selectedFile ? selectedFile.name : "No file chosen"}
               </span>
+							</div>
+							<div className={'note'}>*Only choose docx or pdf file</div>
 						</div>
-						<div className={'note'}>*Only choose docx or pdf file</div>
-					</div>
-					
-					{/* Action Buttons */}
-					<div className="action-buttons">
-						<button
-							className={`convert-button ${(!selectedFile || loadingState !== 'idle') ? "disabled" : ""}`}
-							onClick={handleProcess}
-							disabled={!selectedFile || loadingState !== 'idle'}
-						>
-							{loadingState === "idle" && (
-								<div className="loading-state">Convert</div>
-							)}
-							
-							{loadingState === "converting" && (
-								<div className="loading-state">Converting...</div>
-							)}
-							
-							{loadingState === "summarizing" && (
-								<div className="loading-state">Summarizing...</div>
-							)}
-						</button>
-					</div>
-					{/*{conversionResult.length > 0 && (*/}
-					{/*	<div className="action-buttons">*/}
-					{/*		<button*/}
-					{/*			className={`summarize-button ${!selectedFile ? "disabled" : ""}`}*/}
-					{/*			onClick={handleGetGeminiRequestByDocumentId}*/}
-					{/*		>*/}
-					{/*			Summarize*/}
-					{/*		</button>*/}
-					{/*	</div>*/}
-					{/*)}*/}
-					
-					<div className={'result'}>
-						{loadingState === 'converting' && (
-							<CircularProgress/>
-						)}
 						
-						{loadingState !== 'converting' && (
-							<>
-								{conversionResult.length > 0 && (
-									<div className="conversion-result" style={{ 'flex': 1 }}>
-										<label htmlFor="result">Conversion Result</label>
-										<div className="markdown-output">
-											<Markdown remarkPlugins={[remarkGfm]} urlTransform={( value ) => value} className="foo">
-												{/*{processText (conversionResult[resultPage])}*/}
-												{/*{processText(inputText)}*/}
-												{conversionResult[resultPage]}
-											</Markdown>
-										</div>
-										<div className="pagination">
-											{conversionResult.map (( _, index ) => (
-												<>
-													{index !== conversionResult.length - 1 && (
-														<div
-															key={index}
-															className={`page-number ${
-																index === resultPage ? "active" : ""
-															}`}
-															onClick={() => setResultPage (index)}
-														>
-															{index + 1}
-														</div>
-													)}
-												</>
-											
-											))}
-										</div>
-									</div>
+						{/* Action Buttons */}
+						<div className="action-buttons">
+							<button
+								className={`convert-button ${(!selectedFile || loadingState !== 'idle') ? "disabled" : ""}`}
+								onClick={handleProcess}
+								disabled={!selectedFile || loadingState !== 'idle'}
+							>
+								{loadingState === "idle" && (
+									<div className="loading-state">Convert</div>
 								)}
 								
-								{summarizeResult && (
-									<div className="conversion-result" style={{
-										maxWidth: '900px'
-									}}>
-										<label htmlFor="result">Tables & Images Summarization </label>
-										<div className="markdown-output">
-											<Markdown urlTransform={( value ) => value}>
-												{summarizeResult}
-											</Markdown>
-										</div>
-									</div>
+								{loadingState === "converting" && (
+									<div className="loading-state">Converting...</div>
 								)}
-							</>
-						)}
+								
+								{loadingState === "summarizing" && (
+									<div className="loading-state">Summarizing...</div>
+								)}
+							</button>
+						</div>
+						{/*{conversionResult.length > 0 && (*/}
+						{/*	<div className="action-buttons">*/}
+						{/*		<button*/}
+						{/*			className={`summarize-button ${!selectedFile ? "disabled" : ""}`}*/}
+						{/*			onClick={handleGetGeminiRequestByDocumentId}*/}
+						{/*		>*/}
+						{/*			Summarize*/}
+						{/*		</button>*/}
+						{/*	</div>*/}
+						{/*)}*/}
+						
+						<div className={'result'}>
+							{loadingState === 'converting' && (
+								<CircularProgress/>
+							)}
+							
+							{loadingState !== 'converting' && (
+								<>
+									{conversionResult.length > 0 && (
+										<div className="conversion-result" style={{ 'flex': 1 }}>
+											<label htmlFor="result">Conversion Result</label>
+											<div className="markdown-output">
+												<Markdown remarkPlugins={[remarkGfm]} urlTransform={( value ) => value} className="foo">
+													{/*{processText (conversionResult[resultPage])}*/}
+													{/*{processText(inputText)}*/}
+													{conversionResult[resultPage]}
+												</Markdown>
+											</div>
+											<div className="pagination">
+												{conversionResult.map (( _, index ) => (
+													<>
+														{index !== conversionResult.length - 1 && (
+															<div
+																key={index}
+																className={`page-number ${
+																	index === resultPage ? "active" : ""
+																}`}
+																onClick={() => setResultPage (index)}
+															>
+																{index + 1}
+															</div>
+														)}
+													</>
+												
+												))}
+											</div>
+										</div>
+									)}
+									
+									{summarizeResult && (
+										<div className="conversion-result" style={{
+											maxWidth: '900px'
+										}}>
+											<label htmlFor="result">Tables & Images Summarization </label>
+											<div className="markdown-output">
+												<Markdown urlTransform={( value ) => value}>
+													{summarizeResult}
+												</Markdown>
+											</div>
+										</div>
+									)}
+								</>
+							)}
+						
+						</div>
+						
+						
+						{/*<Markdown remarkPlugins={[remarkGfm]} urlTransform={(value) => value} className="foo">*/}
+						{/*	{markdown}*/}
+						{/*	*/}
+						{/*	*/}
+						{/*</Markdown>*/}
 					
 					</div>
-					
-					
-					{/*<Markdown remarkPlugins={[remarkGfm]} urlTransform={(value) => value} className="foo">*/}
-					{/*	{markdown}*/}
-					{/*	*/}
-					{/*	*/}
-					{/*</Markdown>*/}
-				
 				</div>
 			</div>
-		</div>
+		</>
+		
 	
 	);
 }

@@ -196,3 +196,14 @@
 body {
   margin: 0;
 }
+
+.heading {
+  position: fixed;
+  background-color: #e5e6ea;
+  padding: 10px 20px;
+  font-size: 25px;
+  font-weight: bold;
+  width: 100vw;
+  font-family: sans-serif;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
